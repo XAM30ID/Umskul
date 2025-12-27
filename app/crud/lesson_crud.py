@@ -1,9 +1,9 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from app.models import LessonModel, StudentModel
-from app.schemas import LessonCreate
-from app.exceptions import StudentNotFoundException
+from models import LessonModel, StudentModel
+from schemas import LessonCreate
+from exceptions import StudentNotFoundException
 
 async def create_lesson(lesson: LessonCreate, session: AsyncSession) -> LessonModel:
     student = await session.execute(select(StudentModel).where(StudentModel.telegram_id == lesson.telegram_id))

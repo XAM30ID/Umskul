@@ -1,4 +1,3 @@
-import os
 import logging
 from logging import getLogger, DEBUG
 import uvicorn
@@ -6,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi import FastAPI, Depends, HTTPException
 
-from app.crud.lesson_crud import delete_lesson, get_lessons, get_student_lessons, update_lesson
+from crud.lesson_crud import create_lesson, delete_lesson, get_lessons, get_student_lessons, update_lesson
 from crud.student_crud import create_student, delete_student, get_student, update_student
 from exceptions import StudentAlreadyExistsException, StudentNotFoundException
 from schemas import LessonCreate, StudentCreate
@@ -22,10 +21,13 @@ logging.basicConfig(
 logger = getLogger(__name__)
 
 
-app = FastAPI()
+app = FastAPI(
+    title='Сервис по ведению баллов по экзаменам',
+    docs_url='/api/docs'
+    )
 
 
-@app.post('/setup_database', tags=['Настройка'], summary='Создание базы данных', description='Эндпоинт для создания или перезаписи базы данных')
+@app.post('/api/setup_database', tags=['Настройка'], summary='Создание базы данных', description='Эндпоинт для создания или перезаписи базы данных')
 async def setup_database_url():
     '''
         Создание базы данных
@@ -36,10 +38,11 @@ async def setup_database_url():
         return {'message': 'Tables created successful!'}
     except Exception as e:
         logger.error(f'Таблицы данных не были созданы: {e}')
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 # Ученики
-@app.get('/student/{telegram_id}', tags=['Ученики'], summary='Получение информации об ученике', description='Эндпоинт для получения информации об ученике по telegram_id')
+@app.get('/api/student/{telegram_id}', tags=['Ученики'], summary='Получение информации об ученике', description='Эндпоинт для получения информации об ученике по telegram_id')
 async def get_student_url(telegram_id: int, session: AsyncSession = Depends(get_db)):
     '''
         Получение информации об ученике
@@ -54,7 +57,7 @@ async def get_student_url(telegram_id: int, session: AsyncSession = Depends(get_
         logger.error(f'Ошибка при получении данных: {e}')
         return None
 
-@app.post('/student', tags=['Ученики'], summary='Создание записи ученика', description='Эндпоинт для создания записи ученика')
+@app.post('/api/student', tags=['Ученики'], summary='Создание записи ученика', description='Эндпоинт для создания записи ученика')
 async def create_student_url(student_data: StudentCreate, session: AsyncSession = Depends(get_db)):
     '''
         Создание записи ученика
@@ -69,7 +72,7 @@ async def create_student_url(student_data: StudentCreate, session: AsyncSession 
         logger.error(f'Ошибка при создании пользователя: {e}')
         return None
     
-@app.delete('/student/{telegram_id}', tags=['Ученики'], summary='Удаление ученика', description='Эндпоинт для удаления ученика')
+@app.delete('/api/student/{telegram_id}', tags=['Ученики'], summary='Удаление ученика', description='Эндпоинт для удаления ученика')
 async def delete_student_url(telegram_id: int, session: AsyncSession = Depends(get_db)):
     '''
         Удаление ученика
@@ -84,7 +87,7 @@ async def delete_student_url(telegram_id: int, session: AsyncSession = Depends(g
         logger.error(f'Ошибка при удалении пользователя: {e}')
         return None
 
-@app.put('/student', tags=['Ученики'], summary='Изменение информации ученика', description='Эндпоинт для изменения информации ученика')
+@app.put('/api/student', tags=['Ученики'], summary='Изменение информации ученика', description='Эндпоинт для изменения информации ученика')
 async def update_student_url(student_data: StudentCreate, session: AsyncSession = Depends(get_db)):
     '''
         Изменение информации ученика
@@ -101,7 +104,7 @@ async def update_student_url(student_data: StudentCreate, session: AsyncSession 
 
 
 # Предметы
-@app.get('/lessons', tags=['Предметы'], summary='Получение списка всех предметов', description='Эндпоинт для получения всех предметов всех учеников')
+@app.get('/api/lessons', tags=['Предметы'], summary='Получение списка всех предметов', description='Эндпоинт для получения всех предметов всех учеников')
 async def get_lessons_url(session: AsyncSession = Depends(get_db)):
     '''
         Получение списка всех предметов
@@ -113,7 +116,7 @@ async def get_lessons_url(session: AsyncSession = Depends(get_db)):
         logger.error(f'Ошибка при получении данных: {e}')
         return None
     
-@app.get('/lessons/{telegram_id}', tags=['Предметы'], summary='Получение предметов определённого ученика', description='Эндпоинт для получения списка предметов конкретного ученика')
+@app.get('/api/lessons/{telegram_id}', tags=['Предметы'], summary='Получение предметов определённого ученика', description='Эндпоинт для получения списка предметов конкретного ученика')
 async def get_students_lessons_url(telegram_id: int, session: AsyncSession = Depends(get_db)):
     '''
         Получение списка предметов ученика по telegram_id
@@ -125,13 +128,13 @@ async def get_students_lessons_url(telegram_id: int, session: AsyncSession = Dep
         logger.error(f'Ошибка при получении данных: {e}')
         return None
 
-@app.post('/lessons', tags=['Предметы'], summary='Создание записи предмета', description='Эндпоинт для создания записи предмета')
+@app.post('/api/lessons', tags=['Предметы'], summary='Создание записи предмета', description='Эндпоинт для создания записи предмета')
 async def create_student_url(lesson_data: LessonCreate, session: AsyncSession = Depends(get_db)):
     '''
         Создание записи предмета
     '''
     try:
-        lesson = await create_student(lesson_data, session)
+        lesson = await create_lesson(lesson_data, session)
         return lesson
     except StudentNotFoundException as e:
         logger.error('Пользователь не найден')
@@ -140,7 +143,7 @@ async def create_student_url(lesson_data: LessonCreate, session: AsyncSession = 
         logger.error(f'Ошибка при создании предмета: {e}')
         return None
     
-@app.delete('/student/{lesson_id}', tags=['Предметы'], summary='Удаление предмета', description='Эндпоинт для удаления предмета')
+@app.delete('/api/lessons/{lesson_id}', tags=['Предметы'], summary='Удаление предмета', description='Эндпоинт для удаления предмета')
 async def delete_lesson_url(lesson_id: int, session: AsyncSession = Depends(get_db)):
     '''
         Удаление предмета
@@ -155,7 +158,7 @@ async def delete_lesson_url(lesson_id: int, session: AsyncSession = Depends(get_
         logger.error(f'Ошибка при удалении предмета: {e}')
         return None
 
-@app.put('/lesson', tags=['Предметы'], summary='Изменение информации о предмете', description='Эндпоинт для изменения информации о предмете')
+@app.put('/api/lessons', tags=['Предметы'], summary='Изменение информации о предмете', description='Эндпоинт для изменения информации о предмете')
 async def update_lesson_url(lesson_data: LessonCreate, session: AsyncSession = Depends(get_db)):
     '''
         Изменение информации о предмете
